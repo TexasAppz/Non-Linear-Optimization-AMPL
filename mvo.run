@@ -1,0 +1,43 @@
+# comparing the results of several risk-return problems
+# short sales are allowed
+reset;
+reset;
+reset;
+
+option solver cplex;
+
+# Loading files
+
+model mvo.mod;
+# data from finance.yahoo.com using Adjusted Close stock price data then computing returns and covariance matrix in Excel
+data mvo.dat;
+
+# Parameter definitions
+
+param mmin default 1.002073087; #smallest exp ret in my set 
+param mmax default 1.006521504; #largest exp ret in my set
+let mmax := 1 +2*(mmax-1); # changing mmax to have more interesting efficient frontiers due to short sales
+param ni default 99; # nb iterations will be ni+1=100 here
+
+param mym{0..ni};
+
+param optstdev{0..ni};
+param optxvar{stocks,0..ni};
+
+# Problem definition
+
+problem OptVAR: xVAR, ObjVAR, TargetVAR, SumTo1VAR; 
+
+for {cc in 0..ni}
+{
+let m := mmin + cc*(mmax-mmin)/ni;
+display m;
+solve OptVAR;
+
+# Outputting my results
+let mym[cc] := m;
+let optstdev[cc] := sqrt(ObjVAR);
+let {i in stocks} optxvar[i,cc] := xVAR[i];
+}
+display mym, optstdev > mvo_mstdev.txt;
+display mym, optxvar > mvo_x.txt;
